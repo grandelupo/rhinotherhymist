@@ -1,0 +1,24 @@
+<html>
+    <head>
+        <title>Rhino The Rhymist – easy way to learn a poem</title>
+        <link rel="stylesheet" type="text/css" href="style.css">
+        <script src="index.js"></script>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Rhino The Rhymist</h1>
+                <h2>easy way to learn a poem</h2>
+            </div>
+            <div class="content">
+                <h3>This app lets you create a cheat sheet of initial verse words for a poem. Please enter your poem:</h3>
+                <textarea id="poem" rows="10" cols="50"></textarea>
+                <button onclick="generateCheatSheet()">Generate a cheat sheet</button>
+            </div>
+            <div class="content hidden cheatSheetContainer">
+                <h3>Here is your cheat sheet</h3>
+                <p id="cheatSheet"></p>
+            </div>
+        </div>
+    </body>
+</html>
