@@ -18,6 +18,20 @@ Rhino The Rhymist is a simple web application that helps you learn a poem by gen
     ```sh
     cd rhinotherhymist
     ```
+3. Create the api/config.php file. Eg.:
+```<?php
+return [
+    'OPENAI_API_KEY' => 'sk-proj-xxxxx',
+    'STRIPE_API_KEY' => 'stripe-private-key',
+
+    'ADMIN_PASSPHRASE' => 'Some passphrase1234',
+
+    'DB_HOST' => '127.0.0.1',
+    'DB_NAME' => 'rhinotherhymist',
+    'DB_USER' => 'root',
+    'DB_PASSWORD' => '',
+];
+```
 
 ## Usage
 

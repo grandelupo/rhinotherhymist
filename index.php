@@ -1,3 +1,37 @@
+<?php
+
+use Illuminate\Database\Capsule\Manager as Capsule;
+
+
+// Include necessary dependencies
+require 'vendor/autoload.php';
+
+// Load environment variables
+$config = require 'api/config.php';
+
+// Initialize database connection
+$capsule = new Capsule;
+$capsule->addConnection([
+    'driver'    => 'mysql',
+    'host'      => $config['DB_HOST'],
+    'database'  => $config['DB_NAME'],
+    'username'  => $config['DB_USER'],
+    'password'  => $config['DB_PASSWORD'],
+    'charset'   => 'utf8',
+    'collation' => 'utf8_unicode_ci',
+    'prefix'    => '',
+]);
+$capsule->setAsGlobal();
+$capsule->bootEloquent();
+
+// Fetch all poems from the database
+$poems = Capsule::table('poems')->get();
+
+// Create a map of images grouped by poem ID
+$imagesByPoem = Capsule::table('images')
+    ->get()
+    ->groupBy('poem');
+?>
 <html>
     <head>
         <title>Rhino The Rhymist – easy way to learn a poem</title>
@@ -32,9 +66,36 @@
             <div class="content cheatSheetContainer">
             </div>
         </div>
+
+        <div class="container">
+            <div class="content browse">
+                <h3>See what other poems folks memorize!</h3>
+                <ul>
+                    <?php foreach ($poems as $poem): ?>
+                        <a href="browse.php?poem_id=<?php echo $poem->id; ?>">
+                            <li>
+                                <p>
+                                    <?php 
+                                        $lines = explode("\n", $poem->content); 
+                                        echo $lines[0]; 
+                                        if (isset($lines[1])) {
+                                            echo '<br>' . $lines[1];
+                                        }
+                                    ?>
+                                </p>
+                                <?php foreach ($imagesByPoem[$poem->id]->take(3) as $image): ?>
+                                    <img src="storage/images/<?php echo $image->image_filename; ?>">
+                                <?php endforeach; ?>
+                            </li>
+                        </a>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        </div>
+
         <div id="popup-background" class="hidden"></div>
         <div id="stripe-popup" class="hidden">
-            <button onclick="document.getElementById('stripe-popup').classList.add('hidden'); document.getElementById('popup-background').classList.add('hidden')">Close</button>
+            <button onclick="hideStripePopup()">Close</button>
             <div>
                 <h3>Payment</h3>
                 <p>Pay $2 to generate mnemonic images for your poem. No refunds are available at this point.</p>
@@ -43,10 +104,15 @@
                     <input id="coupon" type="text">
                 </div>
             </div>
-            <form id="stripe-form">
-                <div id="card-element"></div>
-                <button type="submit">Submit Payment</button>
+            <form id="payment-form">
+                <div id="payment-element"></div>
+                <button id="submit">
+                    <div id="spinner" class="hidden"></div>
+                    <span id="button-text">Pay $2 and generate images</span>
+                </button>
+                <div id="payment-message" class="hidden" ></div>
             </form>
         </div>
+        
     </body>
 </html>

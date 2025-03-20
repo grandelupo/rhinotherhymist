@@ -1,4 +1,124 @@
-async function fetchImage(verse, stanza, verseNumber, stanzaNumber, poemId, admin_passphrase, stripe_session_id) {
+async function fetchPublishableKey() {
+    const response = await fetch('api/config.php');
+    const data = await response.json();
+    return data.STRIPE_PUBLISHABLE_KEY;
+}
+
+let stripe;
+
+document.addEventListener('DOMContentLoaded', async function() {
+
+    await fetchPublishableKey().then(key => {
+        console.log(key);
+        stripe = Stripe(key);
+    }).catch(err => {
+        console.error('Error fetching publishable key:', err);
+    });
+
+    const items = [
+        { id: 'Generated mnemonic images for a poem', amount: 1 },
+    ];
+
+    let elements;
+
+    // initialize();
+
+    document
+        .querySelector('#payment-form')
+        .addEventListener('submit', handleSubmit);
+
+});
+
+// Fetches a payment intent and captures the client secret
+async function initialize() {
+    const { clientSecret } = await fetch("api/create_payment.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: null,
+    }).then((r) => r.json());
+  
+    elements = stripe.elements({ clientSecret });
+  
+    const paymentElementOptions = {
+      layout: "accordion",
+    };
+  
+    const paymentElement = elements.create("payment", paymentElementOptions);
+    paymentElement.mount("#payment-element");
+  }
+
+async function handleSubmit(e) {
+    e.preventDefault();
+
+    couponCode = document.getElementById('coupon').value;
+    if (couponCode) {
+        generateImages(couponCode, null);
+        hideStripePopup();
+        return;
+    }
+
+    if (!checkPoemLength()) {
+        alert('Your poem is too long! Please consider shortening it to 5 stanzas or less and 30 verses or less.');
+        hideStripePopup();
+        return;
+    }
+
+    setLoading(true);
+
+    const { paymentIntent, error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+            return_url: window.location.href
+        }
+    });
+
+    if (error) {
+        if (error.type === "card_error" || error.type === "validation_error") {
+            showMessage(error.message);
+        } else {
+            showMessage("An unexpected error occurred.");
+        }
+    }
+
+    if (paymentIntent.status === "succeeded") {
+        generateImages(0, paymentIntent.id);
+        hideStripePopup();
+    }
+    
+    
+    setLoading(false);
+
+}
+
+// ------- UI helpers -------
+
+function showMessage(messageText) {
+    const messageContainer = document.querySelector("#payment-message");
+  
+    messageContainer.classList.remove("hidden");
+    messageContainer.textContent = messageText;
+  
+    setTimeout(function () {
+      messageContainer.classList.add("hidden");
+      messageContainer.textContent = "";
+    }, 4000);
+  }
+  
+  // Show a spinner on payment submission
+  function setLoading(isLoading) {
+    if (isLoading) {
+      // Disable the button and show a spinner
+      document.querySelector("#submit").disabled = true;
+      document.querySelector("#spinner").classList.remove("hidden");
+      document.querySelector("#button-text").classList.add("hidden");
+    } else {
+      document.querySelector("#submit").disabled = false;
+      document.querySelector("#spinner").classList.add("hidden");
+      document.querySelector("#button-text").classList.remove("hidden");
+    }
+  }
+
+async function fetchImage(verse, stanza, verseNumber, stanzaNumber, poemId, admin_passphrase, payment_intent_id) {
     if (admin_passphrase) {
         const response = await fetch('api/request_image.php', {
             method: 'POST',
@@ -30,7 +150,7 @@ async function fetchImage(verse, stanza, verseNumber, stanzaNumber, poemId, admi
             verse_number: verseNumber,
             stanza_number: stanzaNumber,
             poem_id: poemId,
-            stripe_session_id: stripe_session_id
+            payment_intent_id: payment_intent_id
         })
     });
 
@@ -86,7 +206,7 @@ function createStanzaImagesDiv() {
  * @param {HTMLElement} stanzaImagesDiv - The container element where the first line's image of the stanza will be appended.
  * @returns {Promise<void>} A promise that resolves when all images for the stanza have been fetched and appended.
  */
-async function processStanza(stanza, stanzaNumber, poemId, cheatSheetContainer, stanzaImagesDiv, admin_passphrase, stripe_session_id) {
+async function processStanza(stanza, stanzaNumber, poemId, cheatSheetContainer, stanzaImagesDiv, admin_passphrase, payment_intent_id) {
     if (stanza.length === 0) return;
 
     const stanzaDiv = document.createElement('div');
@@ -112,7 +232,7 @@ async function processStanza(stanza, stanzaNumber, poemId, cheatSheetContainer, 
         caption.innerText = firstWord;
         lineDiv.appendChild(caption);
 
-        const lineImageUrl = await fetchImage(line, stanza, i, stanzaNumber, poemId, admin_passphrase, stripe_session_id);
+        const lineImageUrl = await fetchImage(line, stanza, i, stanzaNumber, poemId, admin_passphrase, payment_intent_id);
 
         const lineImage = document.createElement('img');
         lineImage.src = lineImageUrl;
@@ -139,7 +259,7 @@ async function processStanza(stanza, stanzaNumber, poemId, cheatSheetContainer, 
  * @function
  * @returns {Promise<void>} A promise that resolves when all stanza images are processed and appended.
  */
-async function generateImages(admin_passphrase = null, stripe_session_id = null) {
+async function generateImages(admin_passphrase = null, payment_intent_id = null) {
     const poem = document.getElementById('poem').value;
     const processedStanzas = processPoem(poem);
 
@@ -157,7 +277,7 @@ async function generateImages(admin_passphrase = null, stripe_session_id = null)
 
     for (let i = 0; i < processedStanzas.length; i++) {
         const stanza = processedStanzas[i];
-        await processStanza(stanza, i, poemId, cheatSheetContainer, stanzaImagesDiv, admin_passphrase, stripe_session_id);
+        await processStanza(stanza, i, poemId, cheatSheetContainer, stanzaImagesDiv, admin_passphrase, payment_intent_id);
     }
 
     cheatSheetContainer.appendChild(stanzaImagesLabel);
@@ -247,47 +367,29 @@ function updateCounter() {
     versesCounter.innerText = totalVerses;
 }
 
-function showStripePopup() {
-    const stripe = Stripe('your-publishable-key-here');
-    const elements = stripe.elements();
-    const card = elements.create('card');
+function checkPoemLength() {
+    const poem = document.getElementById('poem').value;
+    const totalVerses = poem.split('\n').filter(verse => verse.length > 0).length;
+    const totalStanzas = poem.split('\n\n').filter(stanza => stanza.length > 0).length;
 
+    return (totalVerses < 30 && totalStanzas <= 5);
+}
+
+function showStripePopup() {
     const popupContainer = document.getElementById('stripe-popup');
     popupContainer.classList.remove('hidden');
 
     const popupBackground = document.getElementById('popup-background');
     popupBackground.classList.remove('hidden');
     popupBackground.onclick = () => {
-        popupContainer.classList.add('hidden');
-        popupBackground.classList.add('hidden');
+        hideStripePopup();
     };
+}
 
-    const form = document.getElementById('stripe-form');
-    form.onsubmit = async (e) => {
-        e.preventDefault();
+function hideStripePopup() {
+    const popupContainer = document.getElementById('stripe-popup');
+    popupContainer.classList.add('hidden');
 
-        couponCode = document.getElementById('coupon').value;
-        if (couponCode) {
-            generateImages(couponCode, null);
-            popupContainer.classList.add('hidden');
-            popupBackground.classList.add('hidden');
-            return;
-        }
-
-        const { paymentMethod, error } = await stripe.createPaymentMethod({
-            type: 'card',
-            card: card,
-        });
-
-        if (error) {
-            alert(error.message);
-        } else {
-            alert('Payment processed successfully!');
-            popupContainer.classList.add('hidden');
-            popupBackground.classList.add('hidden');
-            generateImages(null, paymentMethod.id);
-        }
-    };
-
-    card.mount('#card-element');
+    const popupBackground = document.getElementById('popup-background');
+    popupBackground.classList.add('hidden');
 }

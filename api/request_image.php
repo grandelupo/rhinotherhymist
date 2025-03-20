@@ -56,8 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$adminPassphrase || strpos($adminPassphrase, $validPassphrase) !== 0) {
         // Validate Stripe payment if no valid passphrase is provided
-        $stripeSessionId = $data['stripe_session_id'] ?? null;
-        if (!$stripeSessionId || !validateStripePayment($stripeSessionId, $config)) {
+        $pi = $data['payment_intent_id'] ?? null;
+        if (!$stripeSessionId || !validateStripePayment($pi, $config)) {
             http_response_code(403);
             echo json_encode(['error' => 'Payment verification failed.']);
             exit;
@@ -163,21 +163,24 @@ function checkPayload($data) {
 /**
  * Validates the Stripe payment session ID to ensure the payment is completed.
  *
- * @param string $sessionId The Stripe session ID to validate.
+ * @param string $pi The Stripe payment intent ID to validate.
  * 
  * @return bool True if the payment is verified, false otherwise.
  */
-function validateStripePayment($sessionId, $config) {
+function validateStripePayment($pi, $config) {
     $stripeApiKey = $config['STRIPE_API_KEY'];
     if (!$stripeApiKey) {
         throw new Exception('Stripe API key is not set.');
     }
 
-    Stripe::setApiKey($stripeApiKey);
+    $stripe = new StripeClient($stripeApiKey);
 
     try {
-        $session = Session::retrieve($sessionId);
-        return $session->payment_status === 'paid';
+        $paymentIntent = $stripe->paymentIntents->retrieve(
+            $pi,
+            []
+        );
+        return $paymentIntent->status === 'succeeded';
     } catch (Exception $e) {
         error_log('Stripe payment validation failed: ' . $e->getMessage());
         return false;

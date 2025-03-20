@@ -40,17 +40,19 @@ if (!$poem) {
     header('Location: index.php');
 }
 
-$poemVerses = array_map(function($verse) {
+$poemVerses = array_values(array_map(function($verse) {
     $words = explode(' ', $verse);
     if (strlen($words[0]) > 3) {
         return $words[0];
     } else {
         return implode(' ', array_slice($words, 0, 2));
     }
-}, array_filter(explode("\n", $poem->content), 'strlen'));
+}, array_filter(explode("\n", $poem->content), function ($line) {
+    return trim($line) !== '';
+})));
 
 // Fetch images from the database
-$images = Capsule::table('images')->select('image_filename', 'stanza_number', 'verse_number')->get();
+$images = Capsule::table('images')->where('poem', $poem_id)->get();
 
 // Order the images by verse number
 $images = $images->sortBy('stanza_number');
@@ -64,6 +66,7 @@ foreach ($images as $image) {
 
 $totalWords = str_word_count($poem->content);
 $totalVerses = substr_count($poem->content, "\n") + 1;
+$totalStanzas = count($imagesByStanzas);
 
 ?>
 
@@ -83,8 +86,12 @@ $totalVerses = substr_count($poem->content, "\n") + 1;
             <h3>Here's your poem</h3>
             <div class="poemContainer">
                 <div>
-                    <div class="counter"><span>Total number of words: </span><span id="totalWords"><?php $totalWords ?></span></div>
-                    <div class="counter"><span>Total number of verses: </span><span id="totalVerses"><?php $totalVerses ?></span></div>
+                    <p class="poem"><?php echo nl2br(htmlspecialchars($poem->content)); ?></p>
+                </div>
+                <div>
+                    <div class="counter"><span>Total number of words: </span><span id="totalWords"><?php echo $totalWords ?></span></div>
+                    <div class="counter"><span>Total number of verses: </span><span id="totalVerses"><?php echo $totalVerses ?></span></div>
+                    <div class="counter"><span>Total number of stanzas: </span><span id="totalStanzas"><?php echo $totalStanzas ?></span></div>
                 </div>
             </div>
         </div>
