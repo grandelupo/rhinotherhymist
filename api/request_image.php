@@ -110,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'updated_at' => date('Y-m-d H:i:s'),
     ]);
 
-    echo json_encode(['success' => true, 'poem_id' => $poemId, 'image_path' => $imagePath]);
+    echo json_encode(['success' => true, 'poem_id' => $poemId, 'image_path' => 'storage/images/' . $image_filename]);
     exit;
 }
 
