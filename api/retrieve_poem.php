@@ -57,9 +57,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     }
 
     // check if the poem has an associated image
-    $image = Capsule::table('images')->where('poem', $poemId)->first();
+    $imageCount = Capsule::table('images')->where('poem', $poemId)->count();
 
-    echo json_encode(['success' => true, 'poem' => $poem->content, 'created_at' => $poem->created_at, 'updated_at' => $poem->updated_at, 'has_image' => $image ? true : false]);
+    //count how many verses are in the poem
+    $verseCount = count(array_filter(explode("\n", $poem->content), function ($line) {
+        return trim($line) !== '';
+    }));
+
+    echo json_encode(['success' => true, 'poem' => $poem->content, 'created_at' => $poem->created_at, 'updated_at' => $poem->updated_at, 'image_count' => $imageCount, 'total_verses' => $verseCount, 'poem_id' => $poemId]);
     exit;
 } else {
     http_response_code(405);

@@ -94,6 +94,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    // Check if the image already exists in the database
+    $existingImage = Capsule::table('images')
+        ->where('poem', $poem_id)
+        ->where('verse_number', $verse_number)
+        ->where('stanza_number', $stanza_number)
+        ->first();
+
+    if ($existingImage) {
+        echo json_encode(['success' => true, 'poem_id' => $existingImage->id, 'image_path' => 'storage/images/' . $existingImage->image_filename]);
+        exit;
+    }
+
     // Generate image for the poem
     $generatedUrl = generateImageForVerseStanza($verse, $stanza, $config);
     $ch = curl_init();
@@ -246,7 +258,13 @@ function generateImageForVerseStanza($verse, $stanza, $config)
     curl_close($ch);
 
     if ($httpCode !== 200) {
-        throw new Exception('Failed to generate image: ' . $response);
+        // check if the response contains policy violation message
+        $responseData = json_decode($response, true);
+        if (isset($responseData['error']['message']) && $responseData['error']['code'] == 'content_policy_violation') {
+            return $config['APP_URL'] . '/img/placeholder.jpg';
+        } else {
+            throw new Exception('Failed to generate image: ' . $response);
+        }
     }
 
     $responseData = json_decode($response, true);

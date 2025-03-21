@@ -1,11 +1,12 @@
 
 // Generate images if redirected from payment page
 const urlParams = new URLSearchParams(window.location.search);
-const payment_intent_id = urlParams.get('payment_intent_id');
-const poemId = urlParams.get('poem_id');
+var payment_intent_id = urlParams.get('payment_intent_id');
+var poemId = urlParams.get('poem_id');
+var admin_passphrase = urlParams.get('admin_passphrase');
 
-if (payment_intent_id) {
-    generateImages(null, payment_intent_id, poemId);
+if (poemId) {
+    generateImages(admin_passphrase, payment_intent_id, poemId);
 }
 
 
@@ -70,7 +71,7 @@ async function handleSubmit(e) {
     }
 
     if (!checkPoemLength()) {
-        alert('Your poem is too long! Please consider shortening it to 5 stanzas or less and 30 verses or less.');
+        alert('Your poem is too long! Please consider shortening it to 30 verses or less.');
         hideStripePopup();
         return;
     }
@@ -276,8 +277,8 @@ async function processStanza(stanza, stanzaNumber, poemId, cheatSheetContainer, 
  * @returns {Promise<void>} A promise that resolves when all stanza images are processed and appended.
  */
 async function generateImages(admin_passphrase = null, payment_intent_id = null, poemId) {
-    const poem = retrievePoemContent(poemId);
-    const processedStanzas = processPoem(poem);
+    const poem = await retrievePoem(poemId);
+    const processedStanzas = processPoem(poem.poem);
 
     const cheatSheetContainer = createCheatSheetContainer();
     const stanzaImagesLabel = document.createElement('h4');
@@ -289,35 +290,44 @@ async function generateImages(admin_passphrase = null, payment_intent_id = null,
     linkToPoem.innerText = 'Link to your poem';
     cheatSheetContainer.appendChild(linkToPoem);
 
+
     for (let i = 0; i < processedStanzas.length; i++) {
         const stanza = processedStanzas[i];
-        await processStanza(stanza, i, poemId, cheatSheetContainer, stanzaImagesDiv, admin_passphrase, payment_intent_id);
+        try {
+            await processStanza(stanza, i, poemId, cheatSheetContainer, stanzaImagesDiv, admin_passphrase, payment_intent_id);
+        } catch (error) {
+            console.error(`Error processing stanza ${i}:`, error);
+        }
     }
 
     cheatSheetContainer.appendChild(stanzaImagesLabel);
     cheatSheetContainer.appendChild(stanzaImagesDiv);
 
-
+    removeLoader();
 }
 
-function retrievePoemContent(poemId) {
-    fetch(`api/retrieve_poem.php?poem_id=${poemId}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.error || data.has_image) {
-                return null;
-            }
+async function retrievePoem(poemId) {
+    const response = await fetch(`api/retrieve_poem.php?poem_id=${poemId}`);
+    const data = await response.json();
 
-            document.getElementById('poem').value = data.content;
-            updateCounter();
+    if (data.error) {
+        return null;
+    }
 
-            return data.content;
-        });
+    if (data.image_count >= data.total_verses) {
+        return null;
+    }
+
+    document.getElementById('poem').value = data.poem;
+    updateCounter();
+
+    return data;
 }
 
 function removeLoader() {
     const loader = document.getElementsByClassName('loader')[0];
-    loader.remove();
+    loader.innerHTML = '';
+    loader.classList.remove('loader');
 }
 
 async function retrievePoemId(poem) {
@@ -408,7 +418,7 @@ function checkPoemLength() {
     const totalVerses = poem.split('\n').filter(verse => verse.length > 0).length;
     const totalStanzas = poem.split('\n\n').filter(stanza => stanza.length > 0).length;
 
-    return (totalVerses < 30 && totalStanzas <= 5);
+    return (totalVerses <= 30);
 }
 
 function showStripePopup() {
