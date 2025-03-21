@@ -36,6 +36,22 @@ body {
 
 .content h3 {
     color: #333;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.cheatSheetContainer a {
+    text-decoration: none;
+    color: #007BFF;
+    padding: 5px 10px;
+    border: 1px solid #007BFF;
+    border-radius: 4px;
+    transition: background-color 0.3s ease, color 0.3s ease;
+
+    margin-bottom: 10px;
+    display: inline-block;
 }
 
 textarea {
@@ -120,6 +136,7 @@ button:hover {
     border: 1px solid #ccc;
     border-radius: 4px;
     background-color: #f9f9f9;
+    min-height: 3rem;
 }
 
 .stanza-image {
@@ -189,6 +206,15 @@ button:hover {
     animation: spin 1s linear infinite;
 
     margin-left: 10px;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 #popup-background {

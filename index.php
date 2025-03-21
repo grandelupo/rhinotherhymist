@@ -24,8 +24,12 @@ $capsule->addConnection([
 $capsule->setAsGlobal();
 $capsule->bootEloquent();
 
-// Fetch all poems from the database
-$poems = Capsule::table('poems')->get();
+// Fetch all poems that have associated images from the database
+$poems = Capsule::table('poems')
+    ->join('images', 'poems.id', '=', 'images.poem')
+    ->select('poems.*')
+    ->distinct()
+    ->get();
 
 // Create a map of images grouped by poem ID
 $imagesByPoem = Capsule::table('images')

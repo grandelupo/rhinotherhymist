@@ -1,0 +1,27 @@
+<?php
+$config = [
+    'APP_URL' => 'http://localhost:8080',
+
+    'OPENAI_API_KEY' => 'sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+    'STRIPE_SECRET_KEY' => 'sk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+    'STRIPE_PUBLISHABLE_KEY' => 'pk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+    'STRIPE_WEBHOOK_SECRET' => 'whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+
+    'ADMIN_PASSPHRASE' => 'I like rhinoceroses 12345@',
+
+    'DB_HOST' => 'localhost',
+    'DB_NAME' => 'rhinotherhymist',
+    'DB_USER' => 'root',
+    'DB_PASSWORD' => '',
+];
+
+if (basename(__FILE__) === basename($_SERVER['PHP_SELF'])) {
+    header('Content-Type: application/json');
+    echo json_encode([
+        'STRIPE_PUBLISHABLE_KEY' => $config['STRIPE_PUBLISHABLE_KEY'],
+        'APP_URL' => $config['APP_URL'],
+    ]);
+    exit;
+}
+
+return $config;
