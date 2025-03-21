@@ -29,6 +29,12 @@ require '../vendor/autoload.php';
 $config = require 'config.php';
 
 
+// image limit per poem
+$imageLimit = 35;
+$adminImageLimit = 150;
+$isAdmin = false;
+
+
 // Initialize database connection
 $capsule = new Capsule;
 $capsule->addConnection([
@@ -62,6 +68,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo json_encode(['error' => 'Payment verification failed.']);
             exit;
         }
+    } else {
+        $isAdmin = true;
     }
 
     $verse = $data['verse'];
@@ -75,7 +83,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ->where('poem', $poem_id)
         ->count();
 
-    if ($imageCount >= 35) {
+
+    if ($isAdmin) {
+        $imageLimit = $adminImageLimit;
+    }
+
+    if ($imageCount >= $imageLimit) {
         http_response_code(400);
         echo json_encode(['error' => 'Maximum of 35 images per poem reached.']);
         exit;
