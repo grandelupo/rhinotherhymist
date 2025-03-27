@@ -38,6 +38,10 @@ $imagesByPoem = Capsule::table('images')
 ?>
 <html>
     <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="description" content="Rhino The Rhymist – easy way to learn a poem">
+        <meta name="author" content="Karol Krakowski">
         <title>Rhino The Rhymist – easy way to learn a poem</title>
         <link rel="stylesheet" type="text/css" href="style.css">
         <script src="https://js.stripe.com/v3/"></script>
